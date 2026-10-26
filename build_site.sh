@@ -9,12 +9,12 @@ IV=$(md5 -q assets/apple-touch-icon.png | cut -c1-8)
   printf '<!doctype html>\n<html lang="zh-Hant">\n<head>\n<meta charset="utf-8">\n'
   printf '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
   printf '<meta name="description" content="%s">\n' "$DESC"
-  printf '<meta name="theme-color" content="#1F5BD8">\n'
+  printf '<meta name="theme-color" content="#000000">\n'
   # 加到主畫面後以全螢幕 App 的樣子開啟
   printf '<meta name="apple-mobile-web-app-capable" content="yes">\n'
   printf '<meta name="mobile-web-app-capable" content="yes">\n'
   printf '<meta name="apple-mobile-web-app-title" content="我最正直">\n'
-  printf '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
+  printf '<meta name="apple-mobile-web-app-status-bar-style" content="black">\n'
   printf '<link rel="icon" type="image/png" sizes="180x180" href="apple-touch-icon.png?v=%s">\n' "$IV"
   printf '<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=%s">\n' "$IV"
   # Claude Artifact 發佈時會自動加上的基本樣式，獨立網頁要自己補
