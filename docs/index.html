@@ -37,8 +37,8 @@ body.locked{overflow:hidden}
 .wrap{max-width:1360px;margin:0 auto;padding-block:20px 48px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:20px}
-.top{position:relative;container-type:inline-size}
-.top .pickbtn{position:absolute;left:50%;top:75%;transform:translate(-50%,-50%);transition:transform .18s ease,background-color .18s ease,border-color .18s ease;
+.top{position:relative;container-type:inline-size;margin-bottom:28px}
+.top .pickbtn{position:absolute;left:50%;top:calc(100% + .85cqw);transform:translate(-50%,-50%);transition:transform .18s ease,background-color .18s ease,border-color .18s ease;
   border:3px solid var(--neon-ink);box-shadow:0 4px 18px rgba(0,0,0,.5);z-index:1}
 .top .pickbtn:hover,.top .pickbtn.pressed{transform:translate(-50%,-50%) scale(1.15);background:var(--white)}
 @media (prefers-reduced-motion: reduce){.top .pickbtn{transition:none}}
@@ -676,7 +676,7 @@ async function save() {
   if (!state.edOk) return;
   if (state.isSample) {
     const b = $('saveBtn'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
-    toast('範例照片不能下載，請按「選擇照片」換成你自己的照片'); return;
+    toast('欸你幹嘛偷拿啦'); return;
   }
   $('saveBtn').disabled = true;
   try {
