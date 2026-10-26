@@ -1,0 +1,643 @@
+<title>照片拉直</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap">
+<style>
+/* Layout: one column workbench — toolbar, original with detected lines, then three candidate cards; save bar pinned to the bottom edge. */
+:root{
+  --bg:#F1F3F6; --surface:#FFFFFF; --ink:#151A21; --muted:#5A6576; --line:#D6DBE3;
+  --accent:#1F5BD8; --accent-ink:#FFFFFF; --accent-soft:#E3EBFB; --warm:#D9822B;
+  --grid:rgba(255,255,255,.55); --grid-shadow:rgba(0,0,0,.25);
+  --font-display:"Noto Serif TC","Songti TC",serif;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1217; --surface:#181C23; --ink:#E8ECF2; --muted:#97A1AF; --line:#2B313B;
+  --accent:#7099FF; --accent-ink:#0B1020; --accent-soft:#1D2740; --warm:#F0A35A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1217; --surface:#181C23; --ink:#E8ECF2; --muted:#97A1AF; --line:#2B313B;
+  --accent:#7099FF; --accent-ink:#0B1020; --accent-soft:#1D2740; --warm:#F0A35A; color-scheme:dark}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--font-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 120px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--font-display);font-size:30px;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.02em}
+h2{font-size:16px;margin:0;font-weight:700}
+.lede{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:10px 18px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,.opt:focus-within,.switch input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.switch{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;user-select:none}
+.switch input{accent-color:var(--accent);width:18px;height:18px;margin:0}
+.status{margin:0;min-height:1.6em;color:var(--muted);font-size:14px}
+.status.busy::before{content:"";display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
+  border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.status.busy::before{animation:none}}
+.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 10px;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orig-body{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-start}
+.frame{position:relative;display:inline-block;max-width:100%;line-height:0;border-radius:6px;overflow:hidden;background:var(--line)}
+.frame canvas{display:block;max-width:100%;height:auto}
+#origCanvas{max-height:min(48vh,380px);width:auto}
+.frame .overlay{position:absolute;inset:0;width:100%!important;height:100%!important;max-height:none!important;pointer-events:none}
+.facts{margin:0;display:grid;grid-template-columns:auto auto;gap:4px 16px;font-size:14px;min-width:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;align-items:start}
+.opt{position:relative;display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:10px;cursor:pointer}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.opt .frame{display:block}
+.opt canvas{width:100%}
+.gridov{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px),linear-gradient(to bottom,var(--grid) 1px,transparent 1px);
+  background-size:12.5% 12.5%;filter:drop-shadow(0 0 .5px var(--grid-shadow))}
+.nogrid .gridov{display:none}
+.opt-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.opt-name{font-weight:700}
+.pick{font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.opt.sel .pick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opt-desc{margin:0;color:var(--muted);font-size:14px}
+.opt-info{margin:0;font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);margin:0}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.savebar-inner{max-width:1120px;margin:0 auto;padding-block:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.savebar-btns{display:flex;gap:8px;flex-shrink:0}
+.savebar-btns .btn{padding-inline:14px}
+.savebar-inner span{color:var(--muted);font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:10;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet[hidden]{display:none}
+.sheet-card{background:var(--surface);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;max-width:min(720px,100%);max-height:100%}
+.sheet-card p{margin:0}
+.sheet-card img{min-height:0;object-fit:contain;max-height:70vh;border-radius:6px;-webkit-touch-callout:default}
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>照片拉直</h1>
+    <p class="lede">上傳照片，自動偵測畫面裡的直線，產生三種拉直結果。挑一張，存回手機。照片只在你的瀏覽器裡處理，不會上傳到任何地方。</p>
+  </header>
+
+  <div class="toolbar">
+    <label class="btn primary" for="file">選擇照片</label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <label class="switch"><input type="checkbox" id="crop" checked> 自動裁切邊緣</label>
+    <label class="switch"><input type="checkbox" id="grid" checked> 格線</label>
+    <label class="switch"><input type="checkbox" id="lines" checked> 偵測線</label>
+  </div>
+  <p id="status" class="status" role="status"></p>
+
+  <section>
+    <div class="sec-head"><h2>原圖</h2><span id="srcName" class="tag">範例照片</span></div>
+    <div class="orig-body">
+      <div>
+        <div class="frame"><canvas id="origCanvas"></canvas><canvas id="lineCanvas" class="overlay"></canvas></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>垂直線</span><span><i style="background:var(--warm)"></i>水平線</span></div>
+      </div>
+      <dl class="facts" id="facts"></dl>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>選一個版本</h2></div>
+    <div class="options" id="options"></div>
+  </section>
+</main>
+
+<div class="savebar">
+  <div class="savebar-inner"><span id="selLabel"></span>
+    <div class="savebar-btns"><button id="viewBtn" class="btn" type="button">看大圖</button><button id="saveBtn" class="btn primary" type="button">儲存到手機</button></div>
+  </div>
+</div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-card">
+    <p>長按圖片，選「加入照片」或「儲存影像」。電腦上可按右鍵另存。</p>
+    <img id="sheetImg" alt="拉直後的照片">
+    <button id="sheetClose" class="btn" type="button">關閉</button>
+  </div>
+</div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const DEG = 180 / Math.PI;
+const EX = [1, 0, 0], EY = [0, 1, 0];
+const DEFAULT_F35 = 26;          // typical phone main camera, 35mm-equivalent
+const ANALYZE_LONG = 1024;       // detection resolution
+const PREVIEW_LONG = 900;        // option thumbnails
+const MAX_AREA = 16e6;           // iOS Safari canvas limit
+
+// ---------- small linear algebra ----------
+const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const norm = a => { const n = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/n, a[1]/n, a[2]/n]; };
+const mul = (A, B) => A.map(r => [0,1,2].map(j => r[0]*B[0][j] + r[1]*B[1][j] + r[2]*B[2][j]));
+const T = A => [[A[0][0],A[1][0],A[2][0]],[A[0][1],A[1][1],A[2][1]],[A[0][2],A[1][2],A[2][2]]];
+const mv = (A, v) => [dot(A[0], v), dot(A[1], v), dot(A[2], v)];
+const clamp1 = x => Math.max(-1, Math.min(1, x));
+const I3 = [[1,0,0],[0,1,0],[0,0,1]];
+const Rz = t => { const c = Math.cos(t), s = Math.sin(t); return [[c,-s,0],[s,c,0],[0,0,1]]; };
+const Rx = t => { const c = Math.cos(t), s = Math.sin(t); return [[1,0,0],[0,c,-s],[0,s,c]]; };
+const Ry = t => { const c = Math.cos(t), s = Math.sin(t); return [[c,0,s],[0,1,0],[-s,0,c]]; };
+function axisAngle(k, t) {
+  const c = Math.cos(t), s = Math.sin(t), C = 1 - c, [x, y, z] = k;
+  return [[c+x*x*C, x*y*C-z*s, x*z*C+y*s], [y*x*C+z*s, c+y*y*C, y*z*C-x*s], [z*x*C-y*s, z*y*C+x*s, c+z*z*C]];
+}
+// rotation taking unit vector d onto t (optionally only part of the way)
+function align(d, t, frac = 1) {
+  const ax = cross(d, t), sn = Math.hypot(ax[0], ax[1], ax[2]);
+  if (sn < 1e-9) return I3;
+  return axisAngle(norm(ax), Math.acos(clamp1(dot(d, t))) * frac);
+}
+function minEigVec(M) {
+  const a = M.map(r => r.slice()), V = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let sweep = 0; sweep < 60; sweep++) {
+    if (a[0][1]**2 + a[0][2]**2 + a[1][2]**2 < 1e-20) break;
+    for (const [p, q] of [[0,1],[0,2],[1,2]]) {
+      if (Math.abs(a[p][q]) < 1e-16) continue;
+      const th = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+      const t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th*th + 1));
+      const c = 1 / Math.sqrt(t*t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) { const x = a[k][p], y = a[k][q]; a[k][p] = c*x - s*y; a[k][q] = s*x + c*y; }
+      for (let k = 0; k < 3; k++) { const x = a[p][k], y = a[q][k]; a[p][k] = c*x - s*y; a[q][k] = s*x + c*y; }
+      for (let k = 0; k < 3; k++) { const x = V[k][p], y = V[k][q]; V[k][p] = c*x - s*y; V[k][q] = s*x + c*y; }
+    }
+  }
+  let i = 0; for (let k = 1; k < 3; k++) if (a[k][k] < a[i][i]) i = k;
+  return [V[0][i], V[1][i], V[2][i]];
+}
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- EXIF: 35mm-equivalent focal length ----------
+function exifFocal35(buf) {
+  const v = new DataView(buf);
+  if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
+  let o = 2;
+  while (o < v.byteLength - 10) {
+    const m = v.getUint16(o), len = v.getUint16(o + 2);
+    if ((m & 0xFF00) !== 0xFF00) return null;
+    if (m === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) {
+      const t = o + 10, le = v.getUint16(t) === 0x4949;
+      const u16 = p => v.getUint16(p, le), u32 = p => v.getUint32(p, le);
+      const ifd0 = t + u32(t + 4); let exif = 0;
+      for (let i = 0, n = u16(ifd0); i < n; i++) { const e = ifd0 + 2 + i*12; if (u16(e) === 0x8769) exif = t + u32(e + 8); }
+      if (!exif) return null;
+      for (let i = 0, n = u16(exif); i < n; i++) { const e = exif + 2 + i*12; if (u16(e) === 0xA405) return u16(e + 8) || null; }
+      return null;
+    }
+    o += 2 + len;
+  }
+  return null;
+}
+
+// ---------- line segment detection (region growing on gradient orientation) ----------
+function detectSegments(img, w, h) {
+  const n = w * h, d = img.data;
+  let g = new Float32Array(n), tmp = new Float32Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) g[i] = 0.299*d[p] + 0.587*d[p+1] + 0.114*d[p+2];
+  const K = [1/16, 4/16, 6/16, 4/16, 1/16];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0;
+    for (let k = -2; k <= 2; k++) s += K[k+2] * g[y*w + Math.min(w-1, Math.max(0, x+k))]; tmp[y*w+x] = s; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0;
+    for (let k = -2; k <= 2; k++) s += K[k+2] * tmp[Math.min(h-1, Math.max(0, y+k))*w + x]; g[y*w+x] = s; }
+  const mag = new Float32Array(n), ang = new Float32Array(n);
+  for (let y = 1; y < h-1; y++) for (let x = 1; x < w-1; x++) {
+    const i = y*w + x;
+    const gx = (g[i-w+1] + 2*g[i+1] + g[i+w+1]) - (g[i-w-1] + 2*g[i-1] + g[i+w-1]);
+    const gy = (g[i+w-1] + 2*g[i+w] + g[i+w+1]) - (g[i-w-1] + 2*g[i-w] + g[i-w+1]);
+    mag[i] = Math.hypot(gx, gy); ang[i] = Math.atan2(gx, -gy);
+  }
+  const TH = 36, BINS = 1024, cnt = new Int32Array(BINS + 1);
+  const bin = m => Math.min(BINS - 1, (m * 0.7) | 0);
+  let total = 0;
+  for (let i = 0; i < n; i++) if (mag[i] > TH) { cnt[bin(mag[i])]++; total++; }
+  for (let b = BINS - 1, acc = 0; b >= 0; b--) { const c = cnt[b]; cnt[b] = acc; acc += c; }
+  const order = new Int32Array(total);
+  for (let i = 0; i < n; i++) if (mag[i] > TH) order[cnt[bin(mag[i])]++] = i;
+
+  const used = new Uint8Array(n), reg = new Int32Array(n), tau = Math.PI / 8;
+  const diag = Math.hypot(w, h), minLen = Math.max(18, 0.025 * diag), segs = [];
+  for (let oi = 0; oi < total; oi++) {
+    const seed = order[oi]; if (used[seed]) continue;
+    let len = 0, head = 0, th = ang[seed], sx = Math.cos(th), sy = Math.sin(th);
+    used[seed] = 1; reg[len++] = seed;
+    while (head < len) {
+      const p = reg[head++], px = p % w, py = (p / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = px + dx, ny = py + dy; if (nx < 1 || ny < 1 || nx > w-2 || ny > h-2) continue;
+        const q = ny*w + nx; if (used[q] || mag[q] <= TH) continue;
+        let df = Math.abs(ang[q] - th); if (df > Math.PI) df = 2*Math.PI - df; if (df > tau) continue;
+        used[q] = 1; reg[len++] = q; sx += Math.cos(ang[q]); sy += Math.sin(ang[q]); th = Math.atan2(sy, sx);
+      }
+    }
+    if (len < 20) continue;
+    let W = 0, cx = 0, cy = 0;
+    for (let k = 0; k < len; k++) { const p = reg[k], m = mag[p]; W += m; cx += m*(p % w); cy += m*((p / w) | 0); }
+    cx /= W; cy /= W;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (let k = 0; k < len; k++) { const p = reg[k], m = mag[p], x = (p % w) - cx, y = ((p / w) | 0) - cy;
+      sxx += m*x*x; syy += m*y*y; sxy += m*x*y; }
+    const phi = 0.5 * Math.atan2(2*sxy, sxx - syy), c = Math.cos(phi), s = Math.sin(phi);
+    let t0 = Infinity, t1 = -Infinity, e0 = Infinity, e1 = -Infinity;
+    for (let k = 0; k < len; k++) { const p = reg[k], x = (p % w) - cx, y = ((p / w) | 0) - cy;
+      const t = x*c + y*s, e = -x*s + y*c; if (t < t0) t0 = t; if (t > t1) t1 = t; if (e < e0) e0 = e; if (e > e1) e1 = e; }
+    const L = t1 - t0, wd = e1 - e0 + 1;
+    if (L < minLen || wd > Math.max(6, 0.12 * L)) continue;
+    segs.push({ x1: cx + t0*c, y1: cy + t0*s, x2: cx + t1*c, y2: cy + t1*s, len: L });
+  }
+  return segs;
+}
+
+// ---------- vanishing points ----------
+function prepLines(segs, w, h, f) {
+  for (const s of segs) {
+    const a = [(s.x1 - w/2)/f, (s.y1 - h/2)/f, 1], b = [(s.x2 - w/2)/f, (s.y2 - h/2)/f, 1];
+    const l = cross(a, b), k = Math.hypot(l[0], l[1]) || 1;
+    s.l = [l[0]/k, l[1]/k, l[2]/k];
+    s.mx = (a[0] + b[0]) / 2; s.my = (a[1] + b[1]) / 2;
+    const dx = b[0] - a[0], dy = b[1] - a[1], dl = Math.hypot(dx, dy) || 1;
+    s.dx = dx/dl; s.dy = dy/dl;
+    let an = Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * DEG; if (an < 0) an += 180;
+    s.angle = an;
+  }
+}
+function consistent(s, v, sinTol) {
+  const ux = v[0] - s.mx*v[2], uy = v[1] - s.my*v[2], ul = Math.hypot(ux, uy);
+  if (ul < 1e-9) return false;
+  return Math.abs(ux*s.dy - uy*s.dx) / ul < sinTol;
+}
+function findVP(segs, accept, seed) {
+  if (segs.length < 2) return null;
+  const rand = rng(seed), cum = [], sinTol = Math.sin(2 / DEG);
+  let tot = 0; for (const s of segs) { tot += s.len; cum.push(tot); }
+  const pick = () => { const r = rand() * tot; let lo = 0, hi = cum.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < r) lo = m + 1; else hi = m; } return segs[lo]; };
+  let best = null, bestScore = 0;
+  for (let it = 0; it < 500; it++) {
+    const a = pick(), b = pick(); if (a === b) continue;
+    let v = cross(a.l, b.l); if (Math.hypot(v[0], v[1], v[2]) < 1e-9) continue; v = norm(v);
+    if (!accept(v)) continue;
+    let sc = 0; for (const s of segs) if (consistent(s, v, sinTol)) sc += s.len;
+    if (sc > bestScore) { bestScore = sc; best = v; }
+  }
+  if (!best) return null;
+  let v = best, inl = [];
+  for (let round = 0; round < 3; round++) {
+    inl = segs.filter(s => consistent(s, v, sinTol));
+    if (inl.length < 2) return null;
+    const M = [[0,0,0],[0,0,0],[0,0,0]];
+    for (const s of inl) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) M[i][j] += s.len * s.l[i] * s.l[j];
+    const nv = norm(minEigVec(M)); if (!accept(nv)) break; v = nv;
+  }
+  inl = segs.filter(s => consistent(s, v, sinTol));
+  return { v, inliers: inl, score: inl.reduce((a, s) => a + s.len, 0) };
+}
+
+function analyze(canvas, fNorm) {
+  const w = canvas.width, h = canvas.height, diag = Math.hypot(w, h), f = fNorm * diag;
+  const segs = detectSegments(canvas.getContext('2d').getImageData(0, 0, w, h), w, h);
+  prepLines(segs, w, h, f);
+  const vc = segs.filter(s => Math.abs(s.angle - 90) < 35);
+  const hc = segs.filter(s => s.angle < 35 || s.angle > 145);
+  const flipY = v => v[1] < 0 ? [-v[0], -v[1], -v[2]] : v;
+  const flipX = v => v[0] < 0 ? [-v[0], -v[1], -v[2]] : v;
+  let dv = null, dh = null, vRes = null, hRes = null;
+  vRes = findVP(vc, v => Math.acos(clamp1(flipY(v)[1])) < 35 / DEG, 7);
+  if (vRes && vRes.inliers.length >= 2 && vRes.score > 0.2 * diag) dv = flipY(vRes.v); else vRes = null;
+  hRes = findVP(hc, v => { const d = flipX(v); return Math.acos(clamp1(d[0])) < 45 / DEG && (!dv || Math.abs(dot(d, dv)) < 0.2); }, 11);
+  if (hRes && hRes.inliers.length >= 2 && hRes.score > 0.2 * diag) dh = flipX(hRes.v); else hRes = null;
+  for (const s of segs) s.kind = vRes && vRes.inliers.includes(s) ? 'v' : hRes && hRes.inliers.includes(s) ? 'h' : '';
+  return { segs, dv, dh, nV: vRes ? vRes.inliers.length : 0, nH: hRes ? hRes.inliers.length : 0 };
+}
+
+// ---------- the three candidates ----------
+const fmt = r => (Math.abs(r) * DEG).toFixed(1);
+function buildOptions(det) {
+  const { dv, dh } = det, out = [];
+  if (dv) {
+    const roll = Math.atan2(dv[0], dv[1]);
+    const Rl = Rz(roll), d2 = mv(Rl, dv), pitch = Math.atan2(d2[2], d2[1]);
+    out.push({ name: '水平校正', desc: '只把畫面轉正，不改透視。適合風景、人像、街拍。', R: Rl, info: `旋轉 ${fmt(roll)}°` });
+    out.push({ name: '垂直校正', desc: '讓建築的直線垂直平行，修正仰拍造成的上窄下寬。', R: align(dv, EY), info: `仰俯 ${fmt(pitch)}° · 旋轉 ${fmt(roll)}°` });
+    let full = null;
+    if (dh) {
+      const xh = norm([dh[0] - dot(dh, dv)*dv[0], dh[1] - dot(dh, dv)*dv[1], dh[2] - dot(dh, dv)*dv[2]]);
+      const yaw = Math.atan2(xh[2], xh[0]);
+      if (Math.abs(yaw) < 40 / DEG) full = { name: '完整校正', desc: '垂直線與水平線都拉正，像正對著牆面拍攝。',
+        R: [xh, dv, cross(xh, dv)], info: `仰俯 ${fmt(pitch)}° · 左右 ${fmt(yaw)}° · 旋轉 ${fmt(roll)}°` };
+    }
+    out.push(full || { name: '自然垂直', desc: '修正大部分仰角，保留一點透視感，看起來較自然。',
+      R: mul(align(d2, EY, 0.6), Rl), info: `仰俯 ${fmt(pitch * 0.6)}°（保留 40%）· 旋轉 ${fmt(roll)}°` });
+  } else if (dh) {
+    const roll = Math.atan2(-dh[1], dh[0]), Rl = Rz(roll), d2 = mv(Rl, dh), yaw = Math.atan2(d2[2], d2[0]);
+    out.push({ name: '水平校正', desc: '依水平線把畫面轉正。', R: Rl, info: `旋轉 ${fmt(roll)}°` });
+    out.push({ name: '水平透視', desc: '讓水平線全部拉平，像正對著拍。', R: align(dh, EX), info: `左右 ${fmt(yaw)}° · 旋轉 ${fmt(roll)}°` });
+    out.push({ name: '輕度透視', desc: '修正一半的左右透視，保留自然感。', R: mul(align(d2, EX, 0.5), Rl), info: `左右 ${fmt(yaw * 0.5)}° · 旋轉 ${fmt(roll)}°` });
+  }
+  return out;
+}
+
+// ---------- warping ----------
+function camera(w, h, fNorm) {
+  const f = fNorm * Math.hypot(w, h);
+  return { K: [[f,0,w/2],[0,f,h/2],[0,0,1]], Ki: [[1/f,0,-w/(2*f)],[0,1/f,-h/(2*f)],[0,0,1]] };
+}
+function cropRect(H, w, h, crop) {
+  const pts = [];
+  for (const [x, y] of [[0,0],[w,0],[w,h],[0,h]]) {
+    const p = mv(H, [x, y, 1]); if (p[2] < 0.2) return null; pts.push([p[0]/p[2], p[1]/p[2]]);
+  }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
+  if (!crop) return { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 };
+  let area = 0; for (let i = 0; i < 4; i++) { const a = pts[i], b = pts[(i+1)%4]; area += a[0]*b[1] - b[0]*a[1]; }
+  const sg = area > 0 ? 1 : -1, A = w / h, edges = [];
+  for (let i = 0; i < 4; i++) { const a = pts[i], b = pts[(i+1)%4]; edges.push({ a, n: [-(b[1]-a[1])*sg, (b[0]-a[0])*sg] }); }
+  const dirs = [[1, 1/A], [1, -1/A], [-1, 1/A], [-1, -1/A]];
+  const maxS = (cx, cy) => { let s = Infinity;
+    for (const { a, n } of edges) { const base = n[0]*(cx - a[0]) + n[1]*(cy - a[1]); if (base < 0) return 0;
+      for (const d of dirs) { const nd = n[0]*d[0] + n[1]*d[1]; if (nd < 0) s = Math.min(s, base / -nd); } }
+    return s; };
+  let best = { s: 0, x: (bx0 + bx1)/2, y: (by0 + by1)/2 };
+  for (let i = 1; i < 16; i++) for (let j = 1; j < 16; j++) {
+    const x = bx0 + (bx1 - bx0)*i/16, y = by0 + (by1 - by0)*j/16, s = maxS(x, y); if (s > best.s) best = { s, x, y }; }
+  let step = Math.max(bx1 - bx0, by1 - by0) / 16;
+  for (let r = 0; r < 24 && step > 0.25; r++) {
+    let moved = false;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const x = best.x + dx*step, y = best.y + dy*step, s = maxS(x, y);
+      if (s > best.s) { best = { s, x, y }; moved = true; } }
+    if (!moved) step /= 2;
+  }
+  if (best.s <= 1) return null;
+  return { x: best.x - best.s, y: best.y - best.s/A, w: 2*best.s, h: 2*best.s/A };
+}
+function renderWarp(src, sw, sh, fNorm, R, crop, maxOut) {
+  const { K, Ki } = camera(sw, sh, fNorm);
+  const H = mul(K, mul(R, Ki)), Hi = mul(K, mul(T(R), Ki));
+  const rect = cropRect(H, sw, sh, crop); if (!rect) return null;
+  const long = Math.max(rect.w, rect.h), outLong = Math.max(1, Math.min(maxOut, Math.round(long))), k = long / outLong;
+  const ow = Math.max(1, Math.round(rect.w / k)), oh = Math.max(1, Math.round(rect.h / k));
+  const cv = document.createElement('canvas'); cv.width = ow; cv.height = oh;
+  const ctx = cv.getContext('2d'), out = ctx.createImageData(ow, oh), o = out.data;
+  const [a, b, c] = Hi[0], [d, e, f] = Hi[1], [g, hh, ii] = Hi[2];
+  const mx = sw - 1.001, my = sh - 1.001, row = sw * 4;
+  for (let v = 0; v < oh; v++) {
+    const Y = rect.y + (v + 0.5) * k, X = rect.x + 0.5 * k;
+    let xn = a*X + b*Y + c, yn = d*X + e*Y + f, wn = g*X + hh*Y + ii;
+    const sx = a*k, sy = d*k, sw2 = g*k;
+    for (let u = 0, p = v*ow*4; u < ow; u++, p += 4) {
+      const iw = 1 / wn; let x = xn*iw - 0.5, y = yn*iw - 0.5;
+      xn += sx; yn += sy; wn += sw2;
+      o[p+3] = 255;
+      if (x < -1 || y < -1 || x > sw || y > sh) { o[p] = o[p+1] = o[p+2] = 255; continue; }
+      if (x < 0) x = 0; else if (x > mx) x = mx; if (y < 0) y = 0; else if (y > my) y = my;
+      const xi = x | 0, yi = y | 0, fx = x - xi, fy = y - yi, q = yi*row + xi*4, q2 = q + row;
+      for (let ch = 0; ch < 3; ch++) {
+        const t = src[q+ch] + (src[q+4+ch] - src[q+ch]) * fx, bt = src[q2+ch] + (src[q2+4+ch] - src[q2+ch]) * fx;
+        o[p+ch] = t + (bt - t) * fy;
+      }
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  return cv;
+}
+
+// ---------- sample photo (synthetic facade shot looking up) ----------
+function makeSample() {
+  const W = 900, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const sky = x.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#8FB0D4'); sky.addColorStop(1, '#DCE5EE');
+  x.fillStyle = sky; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#7F8B95'; x.fillRect(0, 380, 110, 820);
+  x.fillStyle = '#C7B49A'; x.fillRect(130, 120, 640, 1000);
+  x.fillStyle = '#8A7558'; x.fillRect(115, 110, 670, 34);
+  for (let r = 0; r < 8; r++) {
+    const y = 190 + r * 112;
+    x.fillStyle = '#B29E82'; x.fillRect(130, y + 94, 640, 8);
+    for (let k = 0; k < 5; k++) {
+      const wx = 170 + k * 122;
+      x.fillStyle = '#EFE8DC'; x.fillRect(wx - 6, y - 6, 80, 94);
+      x.fillStyle = '#34404D'; x.fillRect(wx, y, 68, 82);
+      x.fillStyle = '#EFE8DC'; x.fillRect(wx + 32, y, 4, 82);
+    }
+  }
+  x.fillStyle = '#5E5A55'; x.fillRect(0, 1110, W, 90);
+  x.fillStyle = '#3B2F25'; x.fillRect(400, 990, 100, 120);
+  const src = x.getImageData(0, 0, W, H).data, fN = DEFAULT_F35 / 43.27;
+  const R = mul(Rz(2.5 / DEG), mul(Rx(-11 / DEG), Ry(9 / DEG)));
+  return renderWarp(src, W, H, fN, R, true, 1000);
+}
+
+// ---------- UI ----------
+const state = { name: '範例', full: null, small: null, fNorm: DEFAULT_F35 / 43.27, f35: null, exif: false, det: null, opts: [], sel: 1, gen: 0 };
+const downloadsP = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+const tick = () => new Promise(r => setTimeout(r, 30));
+function setStatus(t, busy) { const el = $('status'); el.textContent = t; el.classList.toggle('busy', !!busy); }
+function scaledCanvas(img, w, h, maxLong, maxArea) {
+  let s = Math.min(1, maxLong / Math.max(w, h)); if (maxArea) s = Math.min(s, Math.sqrt(maxArea / (w * h)));
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height); return c;
+}
+
+async function setSource(img, name, f35) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  state.gen++; blobCache.clear();
+  state.name = name; state.f35 = f35 || DEFAULT_F35; state.exif = !!f35;
+  state.fNorm = state.f35 / 43.27;
+  state.full = scaledCanvas(img, w, h, Infinity, MAX_AREA);
+  state.small = scaledCanvas(img, w, h, ANALYZE_LONG);
+  $('srcName').textContent = name;
+  setStatus('偵測直線中…', true); await tick();
+  state.det = analyze(state.small, state.fNorm);
+  state.opts = buildOptions(state.det);
+  state.sel = Math.min(1, state.opts.length - 1);
+  drawOriginal(); renderFacts();
+  await renderOptions();
+}
+
+function drawOriginal() {
+  const o = $('origCanvas'), l = $('lineCanvas'), s = state.small;
+  o.width = l.width = s.width; o.height = l.height = s.height;
+  o.getContext('2d').drawImage(s, 0, 0);
+  const x = l.getContext('2d'); x.clearRect(0, 0, l.width, l.height);
+  if (!$('lines').checked) return;
+  const cs = getComputedStyle(document.documentElement);
+  const col = { v: cs.getPropertyValue('--accent').trim(), h: cs.getPropertyValue('--warm').trim() };
+  x.lineCap = 'round';
+  for (const sg of state.det.segs) {
+    if (!sg.kind) continue;
+    x.strokeStyle = col[sg.kind]; x.lineWidth = Math.max(2, s.width / 300);
+    x.beginPath(); x.moveTo(sg.x1, sg.y1); x.lineTo(sg.x2, sg.y2); x.stroke();
+  }
+}
+
+function renderFacts() {
+  const d = state.det, rows = [
+    ['等效焦距', `${state.f35} mm${state.exif ? '' : '（預設）'}`],
+    ['線段總數', d.segs.length],
+    ['垂直線', d.nV ? `${d.nV} 條` : '未偵測到'],
+    ['水平線', d.nH ? `${d.nH} 條` : '未偵測到'],
+    ['輸出尺寸上限', `${state.full.width} × ${state.full.height}`],
+  ];
+  $('facts').innerHTML = '';
+  for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd');
+    dt.textContent = k; dd.textContent = v; $('facts').append(dt, dd); }
+}
+
+async function renderOptions() {
+  const box = $('options'); box.innerHTML = '';
+  if (!state.opts.length) {
+    const p = document.createElement('p'); p.className = 'empty';
+    p.textContent = '這張照片裡找不到夠長的直線（例如建築、門窗、地平線），沒辦法自動拉直。換一張有明顯線條的照片試試。';
+    box.append(p); updateSaveBar(); setStatus(''); return;
+  }
+  setStatus('產生三個版本…', true); await tick();
+  const s = state.small, src = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+  state.opts.forEach((opt, i) => {
+    const cv = renderWarp(src, s.width, s.height, state.fNorm, opt.R, $('crop').checked, PREVIEW_LONG);
+    opt.ok = !!cv;
+    const lab = document.createElement('label'); lab.className = 'opt';
+    const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'opt'; inp.id = 'opt' + i; inp.value = i;
+    inp.disabled = !cv; inp.checked = i === state.sel;
+    inp.addEventListener('change', () => { state.sel = i; markSel(); });
+    const head = document.createElement('div'); head.className = 'opt-head';
+    head.innerHTML = `<span class="opt-name"></span><span class="pick"></span>`;
+    head.firstChild.textContent = opt.name;
+    const frame = document.createElement('div'); frame.className = 'frame';
+    if (cv) { frame.append(cv); const gd = document.createElement('div'); gd.className = 'gridov'; frame.append(gd); }
+    else { frame.style.cssText = 'padding:40px 12px;line-height:1.5;text-align:center'; frame.textContent = '修正角度太大，無法產生'; }
+    const desc = document.createElement('p'); desc.className = 'opt-desc'; desc.textContent = opt.desc;
+    const info = document.createElement('p'); info.className = 'opt-info'; info.textContent = opt.info;
+    lab.append(inp, head, frame, desc, info); box.append(lab);
+  });
+  if (!state.opts[state.sel].ok) state.sel = state.opts.findIndex(o => o.ok);
+  markSel(); setStatus('');
+}
+
+function markSel() {
+  document.querySelectorAll('.opt').forEach((el, i) => {
+    el.classList.toggle('sel', i === state.sel);
+    el.querySelector('.pick').textContent = i === state.sel ? '已選' : '選這張';
+    el.querySelector('input').checked = i === state.sel;
+  });
+  updateSaveBar(); prewarm();
+}
+function updateSaveBar() {
+  const o = state.opts[state.sel];
+  $('saveBtn').disabled = $('viewBtn').disabled = !o || !o.ok;
+  $('selLabel').textContent = o && o.ok ? `已選：${o.name}` : '沒有可儲存的版本';
+}
+
+// Full-resolution result for one option, cached so a later tap can share it right away.
+const blobCache = new Map();
+function fullBlob(i) {
+  const key = `${state.gen}|${i}|${$('crop').checked}`;
+  if (!blobCache.has(key)) blobCache.set(key, (async () => {
+    const o = state.opts[i], f = state.full, src = f.getContext('2d').getImageData(0, 0, f.width, f.height).data;
+    const cv = renderWarp(src, f.width, f.height, state.fNorm, o.R, $('crop').checked, Math.max(f.width, f.height));
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+    if (!blob) throw new Error('encode');
+    return { blob, w: cv.width, h: cv.height };
+  })().catch(e => { blobCache.delete(key); throw e; }));
+  return blobCache.get(key);
+}
+// Outside Claude (the GitHub Pages copy) saving goes through the share sheet, which needs the file ready at tap time.
+let prewarmTimer = 0;
+function prewarm() {
+  if (window.claude || !navigator.canShare) return;
+  clearTimeout(prewarmTimer);
+  prewarmTimer = setTimeout(() => { const o = state.opts[state.sel]; if (o && o.ok) fullBlob(state.sel).catch(() => {}); }, 400);
+}
+async function resultFor(i) {
+  const key = `${state.gen}|${i}|${$('crop').checked}`;
+  if (!blobCache.has(key)) { setStatus('以完整解析度產生中…', true); await tick(); }
+  return fullBlob(i);
+}
+
+async function save() {
+  const o = state.opts[state.sel]; if (!o || !o.ok) return;
+  $('saveBtn').disabled = true;
+  try {
+    const r = await resultFor(state.sel), size = `${r.w} × ${r.h}`;
+    const base = state.name.replace(/\.[^.]+$/, '').replace(/[^\w一-鿿-]+/g, '_') || 'photo';
+    const filename = `${base}-straight.jpg`;
+    const dl = await downloadsP;
+    if (dl) {
+      try { await dl.save({ filename, data: r.blob }); setStatus(`已儲存 ${filename}（${size}）`); return; }
+      catch (e) {
+        if (e && e.code === 'declined') { setStatus('已取消儲存。'); return; }
+        if (e && e.code === 'rate_limited') { setStatus('儲存視窗已經開著，請先處理它。'); return; }
+      }
+    }
+    const file = new File([r.blob], filename, { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); setStatus(`完成（${size}）`); return; }
+      catch (e) { if (e && e.name === 'AbortError') { setStatus('已取消。'); return; } }
+    }
+    showSheet(r.blob); setStatus(`完成（${size}），長按圖片即可存到相簿。`);
+  } catch (e) {
+    setStatus('產生圖片時出錯，照片可能太大。試試較小的照片。');
+  } finally { updateSaveBar(); }
+}
+async function view() {
+  const o = state.opts[state.sel]; if (!o || !o.ok) return;
+  try { const r = await resultFor(state.sel); showSheet(r.blob); setStatus(`完整解析度 ${r.w} × ${r.h}，長按圖片即可存到相簿。`); }
+  catch (e) { setStatus('產生圖片時出錯，照片可能太大。試試較小的照片。'); }
+}
+let sheetUrl = null;
+function showSheet(blob) {
+  if (sheetUrl) URL.revokeObjectURL(sheetUrl);
+  sheetUrl = URL.createObjectURL(blob); $('sheetImg').src = sheetUrl; $('sheet').hidden = false;
+}
+$('sheetClose').addEventListener('click', () => { $('sheet').hidden = true; });
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').hidden = true; });
+
+async function loadFile(file) {
+  if (!file) return;
+  try {
+    setStatus('讀取照片…', true);
+    const buf = await file.arrayBuffer();
+    let f35 = null; try { f35 = exifFocal35(buf); } catch (e) {}
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    await setSource(img, file.name, f35);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    setStatus('讀不到這張照片。請選 JPG、PNG 或 iPhone 相簿裡的照片。');
+  }
+}
+$('file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); });
+$('crop').addEventListener('change', () => state.det && renderOptions());
+$('lines').addEventListener('change', () => state.det && drawOriginal());
+$('grid').addEventListener('change', () => $('options').classList.toggle('nogrid', !$('grid').checked));
+$('saveBtn').addEventListener('click', save);
+$('viewBtn').addEventListener('click', view);
+
+(async () => {
+  setStatus('載入範例…', true); await tick();
+  const sample = makeSample();
+  await setSource(sample, '範例照片（請按「選擇照片」換成你的）', DEFAULT_F35);
+  state.exif = false; renderFacts();
+})();
+})();
+</script>
