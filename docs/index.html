@@ -9,8 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="我最正直">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="icon" type="image/png" sizes="180x180" href="apple-touch-icon.png?v=83bc1b6c">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=83bc1b6c">
+<link rel="icon" type="image/png" sizes="180x180" href="apple-touch-icon.png?v=848c6574">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=848c6574">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -20,11 +20,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
-/* Layout: black darkroom. Header row = pixel title left, upload button right. Then three results side by side (always a row of three),
-   original + detection facts beside (desktop) or below (phone). Tapping a result opens a full-screen editor with sliders and save buttons. */
+/* Layout: black darkroom. Pixel title spans the full width with the upload button floating at its centre. Three results side by side (always a row of three),
+   original + detection facts beside (desktop) or below (phone). Tapping a result opens a full-screen editor: rotation above the photo, keystone right, aspect left, horizontal perspective below, view/save in the photo corners. */
 :root{
   --bg:#000000; --surface:#111311; --ink:#EDEFEC; --muted:#8E948D; --line:#262A26;
-  --neon:#39FF14; --neon-ink:#000000; --warm:#FF9F43;
+  --neon:#39FF14; --neon-ink:#000000; --pink:#FF2BD6; --warm:#FF9F43; --white:#FFFFFF; --chip:rgba(0,0,0,.62);
   --grid:rgba(255,255,255,.5); --grid-shadow:rgba(0,0,0,.4); --scrim:rgba(0,0,0,.75);
   --font-pixel:"DotGothic16","Noto Sans TC",monospace;
   --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
@@ -37,18 +37,19 @@ body.locked{overflow:hidden}
 .wrap{max-width:1360px;margin:0 auto;padding-block:20px 48px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:20px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
-h1{font-family:var(--font-pixel);font-weight:700;color:var(--neon);font-size:clamp(30px,8vw,44px);line-height:1.1;margin:0;letter-spacing:.06em;
-  text-shadow:0 0 18px rgba(57,255,20,.35)}
+.top{position:relative;container-type:inline-size}
+.top .pickbtn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transition:transform .18s ease,background-color .18s ease,border-color .18s ease;
+  box-shadow:0 4px 18px rgba(0,0,0,.5);z-index:1}
+.top .pickbtn:hover{transform:translate(-50%,-50%) scale(1.15);background:var(--white);border-color:var(--white)}
+@media (prefers-reduced-motion: reduce){.top .pickbtn{transition:none}}
+h1{font-family:var(--font-pixel);font-weight:700;color:var(--neon);margin:0;line-height:1;letter-spacing:0;white-space:nowrap;
+  font-size:calc((100vw - 32px) * .245);font-size:24.5cqw;text-shadow:0 0 18px rgba(57,255,20,.35)}
 h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
-.toolbar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:center}
 .btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);
   padding:10px 18px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
 .btn.primary{background:var(--neon);color:var(--neon-ink);border-color:var(--neon);font-weight:700}
 .btn:disabled{opacity:.5;cursor:default}
-.btn:focus-visible,.opt:focus-visible,.switch input:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
-.switch{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;user-select:none;font-size:14px}
-.switch input{accent-color:var(--neon);width:18px;height:18px;margin:0}
+.btn:focus-visible,.opt:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
 .status{margin:0;min-height:1.6em;color:var(--muted);font-size:14px;text-align:center}
 .status.busy::before{content:"";display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
   border:2px solid var(--neon);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
@@ -87,21 +88,35 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
   padding-top:calc(12px + env(safe-area-inset-top,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .editor[hidden]{display:none}
-.ed-top{display:flex;align-items:center;gap:12px;padding-bottom:12px}
+.ed-top{display:flex;align-items:center;gap:12px;padding-bottom:10px;max-width:1100px;width:100%;margin:0 auto}
 .ed-title{font-weight:700;color:var(--neon)}
-.ed-main{display:grid;gap:18px;flex:1;align-content:start;max-width:1360px;width:100%;margin:0 auto}
-.ed-view{display:flex;justify-content:center;min-width:0}
-.ed-view .frame canvas{max-height:min(56vh,900px);width:auto}
-.sliders{display:flex;flex-direction:column;gap:12px;min-width:0;padding-bottom:12px}
-.sl label{display:flex;justify-content:space-between;gap:8px;font-size:14px}
-.sl output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
-.sl input{width:100%;margin:4px 0 0;accent-color:var(--neon)}
-.sl .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-.outsize{margin:0;font-size:14px;color:var(--muted);text-align:center}
-.outsize b{font-family:var(--font-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
-.ed-actions{display:flex;justify-content:center}
-.ed-foot{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);margin-top:auto;
-  padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;gap:10px}
+.stage{flex:1;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;
+  grid-template-areas:". top ." "left view right" ". bottom .";max-width:1100px;width:100%;margin:0 auto;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.ed-view{grid-area:view;display:flex;justify-content:center;align-items:center;min-width:0;min-height:0}
+.ed-view .frame canvas{max-height:calc(100vh - 230px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  max-height:calc(100dvh - 230px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));width:auto}
+.corner{position:absolute;bottom:10px;z-index:1;min-height:36px;padding:6px 14px;font-size:14px;line-height:1.4}
+.corner.bl{left:10px;background:var(--chip);border-color:transparent;color:var(--white)}
+.corner.br{right:10px}
+.sl{font-size:12px;color:var(--muted)}
+.sl output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.sl input{accent-color:var(--neon);margin:0}
+.hsl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hsl label{display:flex;justify-content:center;gap:8px;font-size:13px;color:var(--ink)}
+.hrow{display:flex;align-items:center;gap:8px}
+.hrow input{flex:1;min-width:0}
+.s-top{grid-area:top}
+.s-bottom{grid-area:bottom}
+.vsl{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:0;text-align:center;line-height:1.3}
+.vsl input{writing-mode:vertical-lr;direction:rtl;flex:1;min-height:100px;width:28px}
+.vsl label{color:var(--ink);font-size:12px}
+.s-left{grid-area:left}
+.s-right{grid-area:right}
+.ed-top .btn{padding:6px 14px;min-height:38px;white-space:nowrap;flex-shrink:0}
+.ed-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ed-top .outsize{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.ed-top .outsize b{font-family:var(--font-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
 .sheet{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:10;
   padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet[hidden]{display:none}
@@ -114,23 +129,16 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
   .opt-info{font-size:13px}
   .opt-info span{display:inline}
   .opt-info span+span::before{content:" · "}
-  .ed-main{grid-template-columns:minmax(0,1fr) 300px;align-items:start}
-  .ed-view .frame canvas{max-height:calc(100vh - 170px)}
 }
 </style>
 
 <main class="wrap">
   <div class="top">
     <h1>我最正直</h1>
-    <label class="btn primary" for="file">選擇照片</label>
+    <label class="btn primary pickbtn" for="file">選擇照片</label>
     <input id="file" type="file" accept="image/*" hidden>
   </div>
 
-  <div class="toolbar">
-    <label class="switch"><input type="checkbox" id="crop" checked> 自動裁切邊緣</label>
-    <label class="switch"><input type="checkbox" id="grid" checked> 格線</label>
-    <label class="switch"><input type="checkbox" id="lines" checked> 偵測線</label>
-  </div>
   <p id="status" class="status" role="status"></p>
 
   <div class="content">
@@ -141,7 +149,6 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
     <section class="orig">
       <div>
         <div class="frame"><canvas id="origCanvas"></canvas><canvas id="lineCanvas" class="overlay"></canvas></div>
-        <div class="legend"><span><i style="background:var(--neon)"></i>垂直線</span><span><i style="background:var(--warm)"></i>水平線</span></div>
       </div>
       <dl class="facts" id="facts"></dl>
     </section>
@@ -149,25 +156,24 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
 </main>
 
 <div id="editor" class="editor" hidden role="dialog" aria-labelledby="edName">
-  <div class="ed-top"><button id="edClose" class="btn" type="button">← 返回</button><span id="edName" class="ed-title"></span></div>
-  <div class="ed-main">
-    <div class="ed-view"><div class="frame"><canvas id="edCanvas"></canvas><div class="gridov"></div></div></div>
-    <div class="sliders">
-      <div class="sl"><label for="adjRot">旋轉 <output id="outRot">0.0°</output></label>
-        <input type="range" id="adjRot" min="-10" max="10" step="0.1" value="0"><div class="ends"><span>逆時針</span><span>順時針</span></div></div>
-      <div class="sl"><label for="adjVert">垂直透視 <output id="outVert">0.0°</output></label>
-        <input type="range" id="adjVert" min="-25" max="25" step="0.5" value="0"><div class="ends"><span>上寬</span><span>上窄</span></div></div>
-      <div class="sl"><label for="adjHorz">水平透視 <output id="outHorz">0.0°</output></label>
-        <input type="range" id="adjHorz" min="-25" max="25" step="0.5" value="0"><div class="ends"><span>左寬</span><span>右寬</span></div></div>
-      <div class="sl"><label for="adjKey">梯形校正 <output id="outKey">0%</output></label>
-        <input type="range" id="adjKey" min="-25" max="25" step="1" value="0"><div class="ends"><span>上寬</span><span>上窄</span></div></div>
-      <div class="sl"><label for="adjAspect">長寬比 <output id="outAspect">0%</output></label>
-        <input type="range" id="adjAspect" min="-30" max="30" step="1" value="0"><div class="ends"><span>變寬</span><span>變高</span></div></div>
-      <p class="outsize">輸出尺寸 <b id="outSize">–</b></p>
-      <div class="ed-actions"><button id="resetAdj" class="btn" type="button">重設微調</button></div>
-    </div>
+  <div class="ed-top">
+    <button id="edClose" class="btn" type="button">← 返回</button>
+    <span id="edName" class="ed-title"></span>
+    <span class="outsize" title="輸出尺寸"><b id="outSize">–</b></span>
+    <button id="resetAdj" class="btn" type="button">重設</button>
   </div>
-  <div class="ed-foot"><button id="viewBtn" class="btn" type="button">看大圖</button><button id="saveBtn" class="btn primary" type="button">儲存到手機</button></div>
+  <div class="stage">
+    <div class="sl hsl s-top"><label for="adjRot">旋轉 <output id="outRot">0.0°</output></label>
+      <div class="hrow"><span>逆時針</span><input type="range" id="adjRot" min="-10" max="10" step="0.1" value="0"><span>順時針</span></div></div>
+    <div class="sl vsl s-left"><span>變高</span><input type="range" id="adjAspect" min="-30" max="30" step="1" value="0"><span>變寬</span>
+      <label for="adjAspect">長寬比</label><output id="outAspect">0%</output></div>
+    <div class="ed-view"><div class="frame"><canvas id="edCanvas"></canvas><div class="gridov"></div>
+      <button id="viewBtn" class="btn corner bl" type="button">看原圖</button><button id="saveBtn" class="btn primary corner br" type="button">存下來</button></div></div>
+    <div class="sl vsl s-right"><span>上窄</span><input type="range" id="adjKey" min="-25" max="25" step="1" value="0"><span>上寬</span>
+      <label for="adjKey">梯形校正</label><output id="outKey">0%</output></div>
+    <div class="sl hsl s-bottom"><label for="adjHorz">水平透視 <output id="outHorz">0.0°</output></label>
+      <div class="hrow"><span>左寬</span><input type="range" id="adjHorz" min="-25" max="25" step="0.5" value="0"><span>右寬</span></div></div>
+  </div>
 </div>
 
 <div id="sheet" class="sheet" hidden>
@@ -480,8 +486,9 @@ function renderWarp(src, sw, sh, fNorm, R, crop, maxOut, post) {
 // ---------- UI ----------
 const state = { name: '範例', orig: [0, 0], full: null, small: null, smallData: null, fNorm: DEFAULT_F35 / 43.27, f35: null, exif: false,
   det: null, opts: [], sel: 1, gen: 0, edOk: false };
+const CROP = true;
 const adj = { rot: 0, vert: 0, horz: 0, key: 0, aspect: 0 };
-const SLIDERS = [['rot', 'adjRot', 'outRot', v => `${v.toFixed(1)}°`], ['vert', 'adjVert', 'outVert', v => `${v.toFixed(1)}°`],
+const SLIDERS = [['rot', 'adjRot', 'outRot', v => `${v.toFixed(1)}°`],
   ['horz', 'adjHorz', 'outHorz', v => `${v.toFixed(1)}°`], ['key', 'adjKey', 'outKey', v => `${v > 0 ? '+' : ''}${v}%`],
   ['aspect', 'adjAspect', 'outAspect', v => `${v > 0 ? '+' : ''}${v}%`]];
 const downloadsP = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
@@ -518,13 +525,12 @@ function drawOriginal() {
   o.width = l.width = s.width; o.height = l.height = s.height;
   o.getContext('2d').drawImage(s, 0, 0);
   const x = l.getContext('2d'); x.clearRect(0, 0, l.width, l.height);
-  if (!$('lines').checked) return;
   const cs = getComputedStyle(document.documentElement);
-  const col = { v: cs.getPropertyValue('--neon').trim(), h: cs.getPropertyValue('--warm').trim() };
+  const col = { v: cs.getPropertyValue('--pink').trim(), h: cs.getPropertyValue('--warm').trim() };
   x.lineCap = 'round';
   for (const sg of state.det.segs) {
     if (!sg.kind) continue;
-    x.strokeStyle = col[sg.kind]; x.lineWidth = Math.max(2, s.width / 300);
+    x.strokeStyle = col[sg.kind]; x.lineWidth = Math.max(2, s.width / 300) * 1.3;
     x.beginPath(); x.moveTo(sg.x1, sg.y1); x.lineTo(sg.x2, sg.y2); x.stroke();
   }
 }
@@ -568,7 +574,7 @@ async function renderOptions() {
   }
   setStatus('產生三個版本…', true); await tick();
   state.opts.forEach((opt, i) => {
-    const cv = renderWarp(state.smallData, s.width, s.height, state.fNorm, opt.R, $('crop').checked, 600);
+    const cv = renderWarp(state.smallData, s.width, s.height, state.fNorm, opt.R, CROP, 600);
     opt.ok = !!cv; box.append(optCard(opt, i, cv));
   });
   setStatus('');
@@ -592,7 +598,7 @@ function currentParams() {
   const o = state.opts[state.sel]; if (!o || !o.ok) return null;
   // positive vertical = narrower at the top, positive horizontal = right side larger, positive rotation = clockwise
   const R = mul(Rz(adj.rot / DEG), mul(Rx(-adj.vert / DEG), mul(Ry(adj.horz / DEG), o.R)));
-  const crop = $('crop').checked;
+  const crop = CROP;
   return { R, crop, post: { stretch: adj.aspect / 100, key: adj.key / 100 }, key: [state.gen, state.sel, crop, adj.rot, adj.vert, adj.horz, adj.key, adj.aspect].join('|') };
 }
 function resetAdj() {
@@ -610,8 +616,8 @@ function renderEditor() {
     if (out) {
       cv.width = out.width; cv.height = out.height; cv.getContext('2d').drawImage(out, 0, 0);
       const f = state.full, pl = plan(f.width, f.height, state.fNorm, p.R, p.crop, Math.max(f.width, f.height), p.post);
-      $('outSize').textContent = pl ? `${pl.ow} × ${pl.oh}` : '–';
-    } else $('outSize').textContent = '角度太大，請調小一點';
+      $('outSize').textContent = pl ? `${pl.ow}×${pl.oh}` : '–';
+    } else $('outSize').textContent = '角度太大';
     updateSaveBar(); prewarm();
   });
 }
@@ -707,9 +713,6 @@ async function loadFile(file) {
 $('file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); });
-$('crop').addEventListener('change', () => state.det && renderOptions());
-$('lines').addEventListener('change', () => state.det && drawOriginal());
-$('grid').addEventListener('change', () => document.body.classList.toggle('nogrid', !$('grid').checked));
 $('saveBtn').addEventListener('click', save);
 $('viewBtn').addEventListener('click', view);
 
