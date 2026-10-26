@@ -22,12 +22,12 @@ body.locked{overflow:hidden}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:20px}
 .top{position:relative;container-type:inline-size}
-.top .pickbtn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transition:transform .18s ease,background-color .18s ease,border-color .18s ease;
+.top .pickbtn{position:absolute;left:50%;top:75%;transform:translate(-50%,-50%);transition:transform .18s ease,background-color .18s ease,border-color .18s ease;
   box-shadow:0 4px 18px rgba(0,0,0,.5);z-index:1}
-.top .pickbtn:hover{transform:translate(-50%,-50%) scale(1.15);background:var(--white);border-color:var(--white)}
+.top .pickbtn:hover,.top .pickbtn.pressed{transform:translate(-50%,-50%) scale(1.15);background:var(--white);border-color:var(--white)}
 @media (prefers-reduced-motion: reduce){.top .pickbtn{transition:none}}
 h1{font-family:var(--font-pixel);font-weight:700;color:var(--neon);margin:0;line-height:1;letter-spacing:0;white-space:nowrap;
-  font-size:calc((100vw - 32px) * .245);font-size:24.5cqw;text-shadow:0 0 18px rgba(57,255,20,.35)}
+  font-size:calc((100vw - 32px) * .196);font-size:19.6cqw;text-shadow:0 0 18px rgba(57,255,20,.35)}
 h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
 .btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);
   padding:10px 18px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
@@ -83,6 +83,9 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
 .corner{position:absolute;bottom:10px;z-index:1;min-height:36px;padding:6px 14px;font-size:14px;line-height:1.4}
 .corner.bl{left:10px;background:var(--chip);border-color:transparent;color:var(--white)}
 .corner.br{right:10px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:12;max-width:calc(100% - 32px);
+  background:var(--white);color:var(--neon-ink);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:500;text-align:center}
+.toast[hidden]{display:none}
 .sl{font-size:12px;color:var(--muted)}
 .sl output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink)}
 .sl input{accent-color:var(--neon);margin:0}
@@ -106,6 +109,7 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
 .sheet[hidden]{display:none}
 .sheet-card{background:var(--surface);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:min(720px,100%);max-height:100%}
 .sheet-card p{margin:0;text-align:center}
+.sheet-card canvas{min-height:0;max-height:70vh;max-width:100%;width:auto;height:auto;border-radius:6px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .sheet-card img{min-height:0;object-fit:contain;max-height:70vh;border-radius:6px;-webkit-touch-callout:default}
 @media (min-width:1000px){
   .content{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;align-items:start}
@@ -118,7 +122,7 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
 
 <main class="wrap">
   <div class="top">
-    <h1>我最正直</h1>
+    <h1>我最　正直</h1>
     <label class="btn primary pickbtn" for="file">選擇照片</label>
     <input id="file" type="file" accept="image/*" hidden>
   </div>
@@ -160,10 +164,13 @@ h2{font-size:14px;margin:0;font-weight:500;color:var(--muted)}
   </div>
 </div>
 
+<div id="toast" class="toast" role="status" hidden></div>
+
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-card">
-    <p>長按圖片，選「加入照片」或「儲存影像」。電腦上可按右鍵另存。</p>
+    <p id="sheetText"></p>
     <img id="sheetImg" alt="拉直後的照片">
+    <canvas id="sheetCanvas" aria-label="調整前的原始照片"></canvas>
     <button id="sheetClose" class="btn" type="button">關閉</button>
   </div>
 </div>
@@ -488,7 +495,8 @@ function blobToImg(blob) {
   return new Promise((res, rej) => { img.onload = () => { URL.revokeObjectURL(url); res(img); }; img.onerror = rej; img.src = url; });
 }
 
-async function setSource(img, name, f35) {
+async function setSource(img, name, f35, isSample = false) {
+  state.isSample = isSample;
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
   state.gen++; blobCache.clear();
   state.name = name; state.orig = [w, h]; state.f35 = f35 || DEFAULT_F35; state.exif = !!f35;
@@ -637,7 +645,7 @@ let prewarmTimer = 0;
 function prewarm() {
   if (window.claude || !navigator.canShare) return;
   clearTimeout(prewarmTimer);
-  prewarmTimer = setTimeout(() => { if (state.edOk) fullBlob().catch(() => {}); }, 800);
+  prewarmTimer = setTimeout(() => { if (state.edOk && !state.isSample) fullBlob().catch(() => {}); }, 800);
 }
 async function result() {
   const p = currentParams();
@@ -647,6 +655,7 @@ async function result() {
 
 async function save() {
   if (!state.edOk) return;
+  if (state.isSample) { toast('範例照片不能下載，請按「選擇照片」換成你自己的照片'); return; }
   $('saveBtn').disabled = true;
   try {
     const r = await result(), size = `${r.w} × ${r.h}`;
@@ -665,21 +674,26 @@ async function save() {
       try { await navigator.share({ files: [file] }); setStatus(`完成（${size}）`); return; }
       catch (e) { if (e && e.name === 'AbortError') { setStatus('已取消。'); return; } }
     }
-    showSheet(r.blob); setStatus(`完成（${size}），長按圖片即可存到相簿。`);
+    showSheet(r.blob); setStatus('');
   } catch (e) {
     setStatus('產生圖片時出錯，照片可能太大。試試較小的照片。');
   } finally { updateSaveBar(); }
 }
-async function view() {
-  if (!state.edOk) return;
-  try { const r = await result(); showSheet(r.blob); setStatus(`完整解析度 ${r.w} × ${r.h}，長按圖片即可存到相簿。`); }
-  catch (e) { setStatus('產生圖片時出錯，照片可能太大。試試較小的照片。'); }
+function view() {
+  const s = state.small, c = $('sheetCanvas');
+  c.width = s.width; c.height = s.height; c.getContext('2d').drawImage(s, 0, 0);
+  $('sheetText').textContent = '調整前的原始照片';
+  $('sheetImg').hidden = true; c.hidden = false; $('sheet').hidden = false;
 }
 let sheetUrl = null;
 function showSheet(blob) {
   if (sheetUrl) URL.revokeObjectURL(sheetUrl);
-  sheetUrl = URL.createObjectURL(blob); $('sheetImg').src = sheetUrl; $('sheet').hidden = false;
+  sheetUrl = URL.createObjectURL(blob); $('sheetImg').src = sheetUrl;
+  $('sheetText').textContent = '長按圖片，選「加入照片」或「儲存影像」。電腦上可按右鍵另存。';
+  $('sheetCanvas').hidden = true; $('sheetImg').hidden = false; $('sheet').hidden = false;
 }
+let toastTimer = 0;
+function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2600); }
 $('sheetClose').addEventListener('click', () => { $('sheet').hidden = true; });
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').hidden = true; });
 
@@ -699,12 +713,14 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); });
 $('saveBtn').addEventListener('click', save);
 $('viewBtn').addEventListener('click', view);
+const pick = document.querySelector('.pickbtn');
+pick.addEventListener('pointerdown', () => { pick.classList.add('pressed'); setTimeout(() => pick.classList.remove('pressed'), 300); });
 
 (async () => {
   setStatus('載入範例…', true);
   try {
     const r = await fetch('sample.jpg'); if (!r.ok) throw new Error('sample');
-    await setSource(await blobToImg(await r.blob()), '範例照片', null);
+    await setSource(await blobToImg(await r.blob()), '範例照片', null, true);
   } catch (e) { setStatus('按「選擇照片」開始。'); }
 })();
 })();
