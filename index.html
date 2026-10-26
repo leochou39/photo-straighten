@@ -1,41 +1,43 @@
-<title>照片拉直</title>
+<title>我最正直</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap">
 <style>
-/* Layout: one column workbench — toolbar, original with detected lines, then three candidate cards; save bar pinned to the bottom edge. */
+/* Layout: phone = one column (original → three candidates → fine-tune); desktop = sticky left rail (title, controls, original) beside a work area (candidates row, then large editor with sliders). Save bar pinned to the bottom edge. */
 :root{
-  --bg:#F1F3F6; --surface:#FFFFFF; --ink:#151A21; --muted:#5A6576; --line:#D6DBE3;
-  --accent:#1F5BD8; --accent-ink:#FFFFFF; --accent-soft:#E3EBFB; --warm:#D9822B;
-  --grid:rgba(255,255,255,.55); --grid-shadow:rgba(0,0,0,.25);
+  --bg:#E4EFE0; --surface:#FFFFFF; --ink:#16201A; --muted:#55665A; --line:#C9DAC4;
+  --accent:#1F5BD8; --accent-ink:#FFFFFF; --warm:#D9822B;
+  --grid:rgba(255,255,255,.55); --grid-shadow:rgba(0,0,0,.25); --scrim:rgba(0,0,0,.6);
   --font-display:"Noto Serif TC","Songti TC",serif;
   --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0F1217; --surface:#181C23; --ink:#E8ECF2; --muted:#97A1AF; --line:#2B313B;
-  --accent:#7099FF; --accent-ink:#0B1020; --accent-soft:#1D2740; --warm:#F0A35A; color-scheme:dark}}
+  --bg:#101812; --surface:#18221B; --ink:#E6EEE7; --muted:#97A99B; --line:#2A3A2E;
+  --accent:#7099FF; --accent-ink:#0B1020; --warm:#F0A35A; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0F1217; --surface:#181C23; --ink:#E8ECF2; --muted:#97A1AF; --line:#2B313B;
-  --accent:#7099FF; --accent-ink:#0B1020; --accent-soft:#1D2740; --warm:#F0A35A; color-scheme:dark}
+  --bg:#101812; --surface:#18221B; --ink:#E6EEE7; --muted:#97A99B; --line:#2A3A2E;
+  --accent:#7099FF; --accent-ink:#0B1020; --warm:#F0A35A; color-scheme:dark}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--font-body);font-size:15px;line-height:1.6}
-.wrap{max-width:1120px;margin:0 auto;padding-block:28px 120px;
+.wrap{max-width:1360px;margin:0 auto;padding-block:28px 120px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  display:flex;flex-direction:column;gap:22px}
-h1{font-family:var(--font-display);font-size:30px;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.02em}
+  display:flex;flex-direction:column;gap:28px}
+.side,.work{display:flex;flex-direction:column;gap:22px;min-width:0}
+header{text-align:center}
+h1{font-family:var(--font-display);font-size:32px;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.04em}
 h2{font-size:16px;margin:0;font-weight:700}
-.lede{margin:6px 0 0;color:var(--muted);max-width:60ch}
-.toolbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.lede{margin:6px auto 0;color:var(--muted);max-width:40ch}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:center}
 .btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);
-  padding:10px 18px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:44px}
+  padding:10px 18px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn:disabled{opacity:.5;cursor:default}
-.btn:focus-visible,.opt:focus-within,.switch input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:focus-visible,.opt:focus-within,.switch input:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .switch{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;user-select:none}
 .switch input{accent-color:var(--accent);width:18px;height:18px;margin:0}
-.status{margin:0;min-height:1.6em;color:var(--muted);font-size:14px}
+.status{margin:0;min-height:1.6em;color:var(--muted);font-size:14px;text-align:center}
 .status.busy::before{content:"";display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
   border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -53,8 +55,8 @@ h2{font-size:16px;margin:0;font-weight:700}
 .facts dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 .legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
 .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
-.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;align-items:start}
-.opt{position:relative;display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;align-items:start}
+.opt{position:relative;display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);
   border-radius:10px;padding:10px;cursor:pointer}
 .opt input{position:absolute;opacity:0;pointer-events:none}
 .opt.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
@@ -71,57 +73,94 @@ h2{font-size:16px;margin:0;font-weight:700}
 .opt-desc{margin:0;color:var(--muted);font-size:14px}
 .opt-info{margin:0;font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums}
 .empty{color:var(--muted);margin:0}
+.editor{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:18px}
+.ed-view{display:flex;justify-content:center;min-width:0}
+.ed-view .frame canvas{max-height:min(70vh,760px);width:auto}
+.sliders{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sl label{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.sl output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.sl input{width:100%;margin:6px 0 0;accent-color:var(--accent)}
+.sl .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.outsize{margin:0;font-size:14px;color:var(--muted);text-align:center}
+.outsize b{font-family:var(--font-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.ed-actions{display:flex;justify-content:center}
 .savebar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom,0px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.savebar-inner{max-width:1120px;margin:0 auto;padding-block:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.savebar-btns{display:flex;gap:8px;flex-shrink:0}
-.savebar-btns .btn{padding-inline:14px}
-.savebar-inner span{color:var(--muted);font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:10;
+.savebar-inner{max-width:1360px;margin:0 auto;padding-block:10px;display:flex;align-items:center;justify-content:center;gap:10px}
+.sheet{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:10;
   padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet[hidden]{display:none}
-.sheet-card{background:var(--surface);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;max-width:min(720px,100%);max-height:100%}
-.sheet-card p{margin:0}
+.sheet-card{background:var(--surface);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:min(720px,100%);max-height:100%}
+.sheet-card p{margin:0;text-align:center}
 .sheet-card img{min-height:0;object-fit:contain;max-height:70vh;border-radius:6px;-webkit-touch-callout:default}
+@media (min-width:1000px){
+  .wrap{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:40px;align-items:start}
+  .side{position:sticky;top:calc(20px + env(safe-area-inset-top,0px))}
+  .orig-body{flex-direction:column}
+  #origCanvas{max-height:min(40vh,420px)}
+  .options{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .editor{grid-template-columns:minmax(0,1fr) 280px;align-items:start}
+}
 </style>
 
 <main class="wrap">
-  <header>
-    <h1>照片拉直</h1>
-    <p class="lede">上傳照片，自動偵測畫面裡的直線，產生三種拉直結果。挑一張，存回手機。照片只在你的瀏覽器裡處理，不會上傳到任何地方。</p>
-  </header>
+  <div class="side">
+    <header>
+      <h1>我最正直</h1>
+      <p class="lede">上傳照片，自動偵測畫面裡的直線，產生三種拉直結果。</p>
+    </header>
 
-  <div class="toolbar">
-    <label class="btn primary" for="file">選擇照片</label>
-    <input id="file" type="file" accept="image/*" hidden>
-    <label class="switch"><input type="checkbox" id="crop" checked> 自動裁切邊緣</label>
-    <label class="switch"><input type="checkbox" id="grid" checked> 格線</label>
-    <label class="switch"><input type="checkbox" id="lines" checked> 偵測線</label>
-  </div>
-  <p id="status" class="status" role="status"></p>
-
-  <section>
-    <div class="sec-head"><h2>原圖</h2><span id="srcName" class="tag">範例照片</span></div>
-    <div class="orig-body">
-      <div>
-        <div class="frame"><canvas id="origCanvas"></canvas><canvas id="lineCanvas" class="overlay"></canvas></div>
-        <div class="legend"><span><i style="background:var(--accent)"></i>垂直線</span><span><i style="background:var(--warm)"></i>水平線</span></div>
-      </div>
-      <dl class="facts" id="facts"></dl>
+    <div class="toolbar">
+      <label class="btn primary" for="file">選擇照片</label>
+      <input id="file" type="file" accept="image/*" hidden>
+      <label class="switch"><input type="checkbox" id="crop" checked> 自動裁切邊緣</label>
+      <label class="switch"><input type="checkbox" id="grid" checked> 格線</label>
+      <label class="switch"><input type="checkbox" id="lines" checked> 偵測線</label>
     </div>
-  </section>
+    <p id="status" class="status" role="status"></p>
 
-  <section>
-    <div class="sec-head"><h2>選一個版本</h2></div>
-    <div class="options" id="options"></div>
-  </section>
+    <section>
+      <div class="sec-head"><h2>原圖</h2><span id="srcName" class="tag">範例照片</span></div>
+      <div class="orig-body">
+        <div>
+          <div class="frame"><canvas id="origCanvas"></canvas><canvas id="lineCanvas" class="overlay"></canvas></div>
+          <div class="legend"><span><i style="background:var(--accent)"></i>垂直線</span><span><i style="background:var(--warm)"></i>水平線</span></div>
+        </div>
+        <dl class="facts" id="facts"></dl>
+      </div>
+    </section>
+  </div>
+
+  <div class="work">
+    <section>
+      <div class="sec-head"><h2>1. 選一個版本</h2></div>
+      <div class="options" id="options"></div>
+    </section>
+
+    <section id="editorSec">
+      <div class="sec-head"><h2>2. 微調</h2><span id="edName" class="tag"></span></div>
+      <div class="editor">
+        <div class="ed-view"><div class="frame"><canvas id="edCanvas"></canvas><div class="gridov"></div></div></div>
+        <div class="sliders">
+          <div class="sl"><label for="adjRot">旋轉 <output id="outRot">0.0°</output></label>
+            <input type="range" id="adjRot" min="-10" max="10" step="0.1" value="0"><div class="ends"><span>逆時針</span><span>順時針</span></div></div>
+          <div class="sl"><label for="adjVert">垂直透視 <output id="outVert">0.0°</output></label>
+            <input type="range" id="adjVert" min="-25" max="25" step="0.5" value="0"><div class="ends"><span>上寬</span><span>上窄</span></div></div>
+          <div class="sl"><label for="adjHorz">水平透視 <output id="outHorz">0.0°</output></label>
+            <input type="range" id="adjHorz" min="-25" max="25" step="0.5" value="0"><div class="ends"><span>左寬</span><span>右寬</span></div></div>
+          <div class="sl"><label for="adjAspect">長寬比 <output id="outAspect">0%</output></label>
+            <input type="range" id="adjAspect" min="-30" max="30" step="1" value="0"><div class="ends"><span>變寬</span><span>變高</span></div></div>
+          <p class="outsize">輸出尺寸 <b id="outSize">–</b></p>
+          <div class="ed-actions"><button id="resetAdj" class="btn" type="button">重設微調</button></div>
+        </div>
+      </div>
+    </section>
+  </div>
 </main>
 
 <div class="savebar">
-  <div class="savebar-inner"><span id="selLabel"></span>
-    <div class="savebar-btns"><button id="viewBtn" class="btn" type="button">看大圖</button><button id="saveBtn" class="btn primary" type="button">儲存到手機</button></div>
-  </div>
+  <div class="savebar-inner"><button id="viewBtn" class="btn" type="button">看大圖</button><button id="saveBtn" class="btn primary" type="button">儲存到手機</button></div>
 </div>
 
 <div id="sheet" class="sheet" hidden>
@@ -388,12 +427,19 @@ function cropRect(H, w, h, crop) {
   if (best.s <= 1) return null;
   return { x: best.x - best.s, y: best.y - best.s/A, w: 2*best.s, h: 2*best.s/A };
 }
-function renderWarp(src, sw, sh, fNorm, R, crop, maxOut) {
+// Geometry of one result: camera rotation R, then an optional stretch about the centre (>0 taller, <0 wider).
+function plan(sw, sh, fNorm, R, crop, maxOut, stretch = 0) {
   const { K, Ki } = camera(sw, sh, fNorm);
-  const H = mul(K, mul(R, Ki)), Hi = mul(K, mul(T(R), Ki));
+  const sx = stretch < 0 ? 1 - stretch : 1, sy = stretch > 0 ? 1 + stretch : 1;
+  const S = [[sx,0,(1-sx)*sw/2],[0,sy,(1-sy)*sh/2],[0,0,1]], Si = [[1/sx,0,-(1-sx)*sw/(2*sx)],[0,1/sy,-(1-sy)*sh/(2*sy)],[0,0,1]];
+  const H = mul(S, mul(K, mul(R, Ki))), Hi = mul(K, mul(T(R), mul(Ki, Si)));
   const rect = cropRect(H, sw, sh, crop); if (!rect) return null;
   const long = Math.max(rect.w, rect.h), outLong = Math.max(1, Math.min(maxOut, Math.round(long))), k = long / outLong;
-  const ow = Math.max(1, Math.round(rect.w / k)), oh = Math.max(1, Math.round(rect.h / k));
+  return { Hi, rect, k, ow: Math.max(1, Math.round(rect.w / k)), oh: Math.max(1, Math.round(rect.h / k)) };
+}
+function renderWarp(src, sw, sh, fNorm, R, crop, maxOut, stretch = 0) {
+  const pl = plan(sw, sh, fNorm, R, crop, maxOut, stretch); if (!pl) return null;
+  const { Hi, rect, k, ow, oh } = pl;
   const cv = document.createElement('canvas'); cv.width = ow; cv.height = oh;
   const ctx = cv.getContext('2d'), out = ctx.createImageData(ow, oh), o = out.data;
   const [a, b, c] = Hi[0], [d, e, f] = Hi[1], [g, hh, ii] = Hi[2];
@@ -419,34 +465,12 @@ function renderWarp(src, sw, sh, fNorm, R, crop, maxOut) {
   return cv;
 }
 
-// ---------- sample photo (synthetic facade shot looking up) ----------
-function makeSample() {
-  const W = 900, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d');
-  const sky = x.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#8FB0D4'); sky.addColorStop(1, '#DCE5EE');
-  x.fillStyle = sky; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#7F8B95'; x.fillRect(0, 380, 110, 820);
-  x.fillStyle = '#C7B49A'; x.fillRect(130, 120, 640, 1000);
-  x.fillStyle = '#8A7558'; x.fillRect(115, 110, 670, 34);
-  for (let r = 0; r < 8; r++) {
-    const y = 190 + r * 112;
-    x.fillStyle = '#B29E82'; x.fillRect(130, y + 94, 640, 8);
-    for (let k = 0; k < 5; k++) {
-      const wx = 170 + k * 122;
-      x.fillStyle = '#EFE8DC'; x.fillRect(wx - 6, y - 6, 80, 94);
-      x.fillStyle = '#34404D'; x.fillRect(wx, y, 68, 82);
-      x.fillStyle = '#EFE8DC'; x.fillRect(wx + 32, y, 4, 82);
-    }
-  }
-  x.fillStyle = '#5E5A55'; x.fillRect(0, 1110, W, 90);
-  x.fillStyle = '#3B2F25'; x.fillRect(400, 990, 100, 120);
-  const src = x.getImageData(0, 0, W, H).data, fN = DEFAULT_F35 / 43.27;
-  const R = mul(Rz(2.5 / DEG), mul(Rx(-11 / DEG), Ry(9 / DEG)));
-  return renderWarp(src, W, H, fN, R, true, 1000);
-}
-
 // ---------- UI ----------
-const state = { name: '範例', full: null, small: null, fNorm: DEFAULT_F35 / 43.27, f35: null, exif: false, det: null, opts: [], sel: 1, gen: 0 };
+const state = { name: '範例', orig: [0, 0], full: null, small: null, smallData: null, fNorm: DEFAULT_F35 / 43.27, f35: null, exif: false,
+  det: null, opts: [], sel: 1, gen: 0, edOk: false };
+const adj = { rot: 0, vert: 0, horz: 0, aspect: 0 };
+const SLIDERS = [['rot', 'adjRot', 'outRot', v => `${v.toFixed(1)}°`], ['vert', 'adjVert', 'outVert', v => `${v.toFixed(1)}°`],
+  ['horz', 'adjHorz', 'outHorz', v => `${v.toFixed(1)}°`], ['aspect', 'adjAspect', 'outAspect', v => `${v > 0 ? '+' : ''}${v}%`]];
 const downloadsP = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
 const tick = () => new Promise(r => setTimeout(r, 30));
 function setStatus(t, busy) { const el = $('status'); el.textContent = t; el.classList.toggle('busy', !!busy); }
@@ -455,14 +479,19 @@ function scaledCanvas(img, w, h, maxLong, maxArea) {
   const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
   const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height); return c;
 }
+function blobToImg(blob) {
+  const url = URL.createObjectURL(blob), img = new Image();
+  return new Promise((res, rej) => { img.onload = () => { URL.revokeObjectURL(url); res(img); }; img.onerror = rej; img.src = url; });
+}
 
 async function setSource(img, name, f35) {
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
   state.gen++; blobCache.clear();
-  state.name = name; state.f35 = f35 || DEFAULT_F35; state.exif = !!f35;
+  state.name = name; state.orig = [w, h]; state.f35 = f35 || DEFAULT_F35; state.exif = !!f35;
   state.fNorm = state.f35 / 43.27;
   state.full = scaledCanvas(img, w, h, Infinity, MAX_AREA);
   state.small = scaledCanvas(img, w, h, ANALYZE_LONG);
+  state.smallData = state.small.getContext('2d').getImageData(0, 0, state.small.width, state.small.height).data;
   $('srcName').textContent = name;
   setStatus('偵測直線中…', true); await tick();
   state.det = analyze(state.small, state.fNorm);
@@ -489,12 +518,13 @@ function drawOriginal() {
 }
 
 function renderFacts() {
-  const d = state.det, rows = [
+  const d = state.det, [w, h] = state.orig, f = state.full, capped = f.width < w;
+  const rows = [
+    ['原圖尺寸', `${w} × ${h}`],
+    ...(capped ? [['處理尺寸', `${f.width} × ${f.height}`]] : []),
     ['等效焦距', `${state.f35} mm${state.exif ? '' : '（預設）'}`],
-    ['線段總數', d.segs.length],
     ['垂直線', d.nV ? `${d.nV} 條` : '未偵測到'],
     ['水平線', d.nH ? `${d.nH} 條` : '未偵測到'],
-    ['輸出尺寸上限', `${state.full.width} × ${state.full.height}`],
   ];
   $('facts').innerHTML = '';
   for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd');
@@ -505,18 +535,20 @@ async function renderOptions() {
   const box = $('options'); box.innerHTML = '';
   if (!state.opts.length) {
     const p = document.createElement('p'); p.className = 'empty';
-    p.textContent = '這張照片裡找不到夠長的直線（例如建築、門窗、地平線），沒辦法自動拉直。換一張有明顯線條的照片試試。';
-    box.append(p); updateSaveBar(); setStatus(''); return;
+    p.textContent = '這張照片裡找不到夠長的直線（例如建築、門窗、地平線），沒辦法自動拉直。你還是可以在下方用滑桿手動調整。';
+    box.append(p);
+    state.opts = [{ name: '原圖', desc: '', R: I3, info: '' }]; state.sel = 0; state.opts[0].ok = true;
+    resetAdj(); setStatus(''); return;
   }
   setStatus('產生三個版本…', true); await tick();
-  const s = state.small, src = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+  const s = state.small;
   state.opts.forEach((opt, i) => {
-    const cv = renderWarp(src, s.width, s.height, state.fNorm, opt.R, $('crop').checked, PREVIEW_LONG);
+    const cv = renderWarp(state.smallData, s.width, s.height, state.fNorm, opt.R, $('crop').checked, 600);
     opt.ok = !!cv;
     const lab = document.createElement('label'); lab.className = 'opt';
     const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'opt'; inp.id = 'opt' + i; inp.value = i;
     inp.disabled = !cv; inp.checked = i === state.sel;
-    inp.addEventListener('change', () => { state.sel = i; markSel(); });
+    inp.addEventListener('change', () => { state.sel = i; markSel(); resetAdj(); });
     const head = document.createElement('div'); head.className = 'opt-head';
     head.innerHTML = `<span class="opt-name"></span><span class="pick"></span>`;
     head.firstChild.textContent = opt.name;
@@ -528,7 +560,7 @@ async function renderOptions() {
     lab.append(inp, head, frame, desc, info); box.append(lab);
   });
   if (!state.opts[state.sel].ok) state.sel = state.opts.findIndex(o => o.ok);
-  markSel(); setStatus('');
+  markSel(); resetAdj(); setStatus('');
 }
 
 function markSel() {
@@ -537,45 +569,82 @@ function markSel() {
     el.querySelector('.pick').textContent = i === state.sel ? '已選' : '選這張';
     el.querySelector('input').checked = i === state.sel;
   });
-  updateSaveBar(); prewarm();
-}
-function updateSaveBar() {
   const o = state.opts[state.sel];
-  $('saveBtn').disabled = $('viewBtn').disabled = !o || !o.ok;
-  $('selLabel').textContent = o && o.ok ? `已選：${o.name}` : '沒有可儲存的版本';
+  $('edName').textContent = o ? `從「${o.name}」開始` : '';
 }
 
-// Full-resolution result for one option, cached so a later tap can share it right away.
+// ---------- fine-tune ----------
+function currentParams() {
+  const o = state.opts[state.sel]; if (!o || !o.ok) return null;
+  // positive vertical = narrower at the top, positive horizontal = right side larger, positive rotation = clockwise
+  const R = mul(Rz(adj.rot / DEG), mul(Rx(-adj.vert / DEG), mul(Ry(adj.horz / DEG), o.R)));
+  const crop = $('crop').checked;
+  return { R, crop, stretch: adj.aspect / 100, key: [state.gen, state.sel, crop, adj.rot, adj.vert, adj.horz, adj.aspect].join('|') };
+}
+function resetAdj() {
+  for (const [k, id, out, f] of SLIDERS) { adj[k] = 0; $(id).value = 0; $(out).textContent = f(0); }
+  renderEditor();
+}
+let edRaf = 0;
+function renderEditor() {
+  cancelAnimationFrame(edRaf);
+  edRaf = requestAnimationFrame(() => {
+    const p = currentParams(), cv = $('edCanvas'), s = state.small;
+    const out = p && renderWarp(state.smallData, s.width, s.height, state.fNorm, p.R, p.crop, PREVIEW_LONG, p.stretch);
+    state.edOk = !!out;
+    if (out) {
+      cv.width = out.width; cv.height = out.height; cv.getContext('2d').drawImage(out, 0, 0);
+      const f = state.full, pl = plan(f.width, f.height, state.fNorm, p.R, p.crop, Math.max(f.width, f.height), p.stretch);
+      $('outSize').textContent = pl ? `${pl.ow} × ${pl.oh}` : '–';
+    } else $('outSize').textContent = '角度太大，請調小一點';
+    updateSaveBar(); prewarm();
+  });
+}
+for (const [k, id, out, f] of SLIDERS) {
+  $(id).addEventListener('input', () => { adj[k] = +$(id).value; $(out).textContent = f(adj[k]); renderEditor(); });
+  $(id).addEventListener('dblclick', () => { adj[k] = 0; $(id).value = 0; $(out).textContent = f(0); renderEditor(); });
+}
+$('resetAdj').addEventListener('click', resetAdj);
+
+function updateSaveBar() {
+  $('saveBtn').disabled = $('viewBtn').disabled = !state.edOk;
+}
+
+// Full-resolution result for the current settings, cached so a later tap can share it right away.
 const blobCache = new Map();
-function fullBlob(i) {
-  const key = `${state.gen}|${i}|${$('crop').checked}`;
-  if (!blobCache.has(key)) blobCache.set(key, (async () => {
-    const o = state.opts[i], f = state.full, src = f.getContext('2d').getImageData(0, 0, f.width, f.height).data;
-    const cv = renderWarp(src, f.width, f.height, state.fNorm, o.R, $('crop').checked, Math.max(f.width, f.height));
-    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
-    if (!blob) throw new Error('encode');
-    return { blob, w: cv.width, h: cv.height };
-  })().catch(e => { blobCache.delete(key); throw e; }));
-  return blobCache.get(key);
+function fullBlob() {
+  const p = currentParams(); if (!p) return Promise.reject(new Error('none'));
+  if (!blobCache.has(p.key)) {
+    blobCache.clear();
+    blobCache.set(p.key, (async () => {
+      const f = state.full, src = f.getContext('2d').getImageData(0, 0, f.width, f.height).data;
+      const cv = renderWarp(src, f.width, f.height, state.fNorm, p.R, p.crop, Math.max(f.width, f.height), p.stretch);
+      if (!cv) throw new Error('range');
+      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+      if (!blob) throw new Error('encode');
+      return { blob, w: cv.width, h: cv.height };
+    })().catch(e => { blobCache.delete(p.key); throw e; }));
+  }
+  return blobCache.get(p.key);
 }
 // Outside Claude (the GitHub Pages copy) saving goes through the share sheet, which needs the file ready at tap time.
 let prewarmTimer = 0;
 function prewarm() {
   if (window.claude || !navigator.canShare) return;
   clearTimeout(prewarmTimer);
-  prewarmTimer = setTimeout(() => { const o = state.opts[state.sel]; if (o && o.ok) fullBlob(state.sel).catch(() => {}); }, 400);
+  prewarmTimer = setTimeout(() => { if (state.edOk) fullBlob().catch(() => {}); }, 800);
 }
-async function resultFor(i) {
-  const key = `${state.gen}|${i}|${$('crop').checked}`;
-  if (!blobCache.has(key)) { setStatus('以完整解析度產生中…', true); await tick(); }
-  return fullBlob(i);
+async function result() {
+  const p = currentParams();
+  if (p && !blobCache.has(p.key)) { setStatus('以完整解析度產生中…', true); await tick(); }
+  return fullBlob();
 }
 
 async function save() {
-  const o = state.opts[state.sel]; if (!o || !o.ok) return;
+  if (!state.edOk) return;
   $('saveBtn').disabled = true;
   try {
-    const r = await resultFor(state.sel), size = `${r.w} × ${r.h}`;
+    const r = await result(), size = `${r.w} × ${r.h}`;
     const base = state.name.replace(/\.[^.]+$/, '').replace(/[^\w一-鿿-]+/g, '_') || 'photo';
     const filename = `${base}-straight.jpg`;
     const dl = await downloadsP;
@@ -597,8 +666,8 @@ async function save() {
   } finally { updateSaveBar(); }
 }
 async function view() {
-  const o = state.opts[state.sel]; if (!o || !o.ok) return;
-  try { const r = await resultFor(state.sel); showSheet(r.blob); setStatus(`完整解析度 ${r.w} × ${r.h}，長按圖片即可存到相簿。`); }
+  if (!state.edOk) return;
+  try { const r = await result(); showSheet(r.blob); setStatus(`完整解析度 ${r.w} × ${r.h}，長按圖片即可存到相簿。`); }
   catch (e) { setStatus('產生圖片時出錯，照片可能太大。試試較小的照片。'); }
 }
 let sheetUrl = null;
@@ -615,11 +684,7 @@ async function loadFile(file) {
     setStatus('讀取照片…', true);
     const buf = await file.arrayBuffer();
     let f35 = null; try { f35 = exifFocal35(buf); } catch (e) {}
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
-    await setSource(img, file.name, f35);
-    URL.revokeObjectURL(url);
+    await setSource(await blobToImg(file), file.name, f35);
   } catch (e) {
     setStatus('讀不到這張照片。請選 JPG、PNG 或 iPhone 相簿裡的照片。');
   }
@@ -629,15 +694,16 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); });
 $('crop').addEventListener('change', () => state.det && renderOptions());
 $('lines').addEventListener('change', () => state.det && drawOriginal());
-$('grid').addEventListener('change', () => $('options').classList.toggle('nogrid', !$('grid').checked));
+$('grid').addEventListener('change', () => document.body.classList.toggle('nogrid', !$('grid').checked));
 $('saveBtn').addEventListener('click', save);
 $('viewBtn').addEventListener('click', view);
 
 (async () => {
-  setStatus('載入範例…', true); await tick();
-  const sample = makeSample();
-  await setSource(sample, '範例照片（請按「選擇照片」換成你的）', DEFAULT_F35);
-  state.exif = false; renderFacts();
+  setStatus('載入範例…', true);
+  try {
+    const r = await fetch('sample.jpg'); if (!r.ok) throw new Error('sample');
+    await setSource(await blobToImg(await r.blob()), '範例照片（按「選擇照片」換成你的）', null);
+  } catch (e) { setStatus('按「選擇照片」開始。'); }
 })();
 })();
 </script>
